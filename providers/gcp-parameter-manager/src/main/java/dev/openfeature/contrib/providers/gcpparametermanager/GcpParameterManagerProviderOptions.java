@@ -63,6 +63,14 @@ public class GcpParameterManagerProviderOptions {
     private final int cacheMaxSize = 500;
 
     /**
+     * The parameter version to retrieve. Defaults to {@code "latest"}.
+     * Override with a specific version number (e.g. {@code "3"}) for pinned deployments
+     * where you want consistent behaviour regardless of parameter updates.
+     */
+    @Builder.Default
+    private final String parameterVersion = "latest";
+
+    /**
      * Optional prefix prepended to every flag key before constructing the GCP
      * parameter name. For example, setting {@code parameterNamePrefix = "ff-"} maps
      * flag key {@code "my-flag"} to parameter name {@code "ff-my-flag"}.

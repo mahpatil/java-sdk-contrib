@@ -92,6 +92,7 @@ public class GcpSecretManagerProvider implements FeatureProvider {
             } catch (Exception e) {
                 log.warn("Error closing SecretManagerServiceClient", e);
             }
+            client = null;
         }
         log.info("GcpSecretManagerProvider shut down");
     }

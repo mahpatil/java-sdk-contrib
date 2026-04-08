@@ -92,6 +92,7 @@ public class GcpParameterManagerProvider implements FeatureProvider {
             } catch (Exception e) {
                 log.warn("Error closing ParameterManagerClient", e);
             }
+            client = null;
         }
         log.info("GcpParameterManagerProvider shut down");
     }
@@ -162,7 +163,7 @@ public class GcpParameterManagerProvider implements FeatureProvider {
     private String fetchFromGcp(String parameterName) {
         try {
             ParameterVersionName versionName =
-                    ParameterVersionName.of(options.getProjectId(), options.getLocationId(), parameterName, "latest");
+                    ParameterVersionName.of(options.getProjectId(), options.getLocationId(), parameterName, options.getParameterVersion());
             log.debug("Fetching parameter '{}' from GCP", versionName);
             RenderParameterVersionResponse response = client.renderParameterVersion(versionName);
             return response.getRenderedPayload().toStringUtf8();

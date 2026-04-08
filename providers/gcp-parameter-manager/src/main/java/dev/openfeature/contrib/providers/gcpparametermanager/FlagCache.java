@@ -2,26 +2,32 @@ package dev.openfeature.contrib.providers.gcpparametermanager;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Thread-safe TTL-based in-memory cache for flag values fetched from GCP Parameter Manager.
  *
  * <p>Entries expire after the configured {@code ttl}. When the cache reaches {@code maxSize},
- * the entry with the earliest expiry is evicted before inserting the new entry.
+ * the entry with the earliest insertion time is evicted in O(1) via {@link LinkedHashMap}'s
+ * insertion-order iteration and {@code removeEldestEntry}.
  */
 class FlagCache {
 
-    private final Map<String, CacheEntry> store = new ConcurrentHashMap<>();
+    private final Map<String, CacheEntry> store;
     private final Duration ttl;
-    private final int maxSize;
 
     FlagCache(Duration ttl, int maxSize) {
         this.ttl = ttl;
-        this.maxSize = maxSize;
+        this.store = Collections.synchronizedMap(
+                new LinkedHashMap<String, CacheEntry>(16, 0.75f, false) {
+                    @Override
+                    protected boolean removeEldestEntry(Map.Entry<String, CacheEntry> eldest) {
+                        return size() > maxSize;
+                    }
+                });
     }
 
     /**
@@ -43,15 +49,13 @@ class FlagCache {
     }
 
     /**
-     * Stores {@code value} under {@code key}, evicting the oldest entry if the cache is full.
+     * Stores {@code value} under {@code key}. Eviction of the oldest entry (when the cache is
+     * full) is handled automatically by the underlying {@link LinkedHashMap}.
      *
      * @param key   the cache key
      * @param value the value to cache
      */
     void put(String key, String value) {
-        if (store.size() >= maxSize && !store.containsKey(key)) {
-            evictOldest();
-        }
         store.put(key, new CacheEntry(value, ttl));
     }
 
@@ -67,13 +71,6 @@ class FlagCache {
     /** Removes all entries from the cache. */
     void clear() {
         store.clear();
-    }
-
-    private void evictOldest() {
-        store.entrySet().stream()
-                .min(Comparator.comparing(e -> e.getValue().expiresAt))
-                .map(Map.Entry::getKey)
-                .ifPresent(store::remove);
     }
 
     private static final class CacheEntry {
